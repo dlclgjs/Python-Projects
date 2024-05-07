@@ -1,138 +1,146 @@
-board = [' ' for i in range(10)]
+import tkinter as tk
+from tkinter import messagebox
+import random
 
-def insertLetter(letter,pos):
-    board[pos] = letter
+class TicTacToeGUI:
+    def __init__(self, master):
+        self.master = master
+        self.master.title("Tic Tac Toe")
 
+        self.board = [' ' for _ in range(9)]  # 게임 보드 초기화
 
-def spaceIsfree(pos):
-   return board[pos] == ' '
+        self.buttons = []
+        for i in range(9):
+            button = tk.Button(master, text='', font=('Helvetica', 20), width=4, height=2,
+                               command=lambda idx=i: self.button_click(idx))
+            button.grid(row=i//3, column=i%3)
+            self.buttons.append(button)
 
-def printBoard(board):
-    print("   |   |   ")
-    print(" " +board[1] + " | "+ board[2]+ " | " + board[3])
-    print("   |   |   ")
-    print("-----------")
-    print("   |   |   ")
-    print(" " +board[4] + " | "+ board[5]+ " | " + board[6])
-    print("   |   |   ")
-    print("-----------")
-    print("   |   |   ")
-    print(" " + board[7] + " | " + board[8] + " | " + board[9])
-    print("   |   |   ")
+        self.player_mark = 'X'
+        self.computer_mark = 'O'
+        self.player_turn = True
+        self.mode_selection()
 
-def isBoardFull(board):
-    if board.count(" ") > 1:
-        return False
-    else:
-        return True
+    def mode_selection(self):
+        mode_frame = tk.Frame(self.master)
+        mode_frame.grid(row=3, columnspan=3)
+        tk.Label(mode_frame, text="Select mode:").pack()
 
-def isWinner(b,l):    # b = board, l = letter
-    # check all possibilities
-    return ((b[1] == l and b[2] == l and b[3] == l) or (b[4] == l and b[5] == l and b[6] == l) or (b[7] == l and b[8] == l and b[9] == l) or (b[1] == l and b[4] == l and b[7] == l) or (b[2] == l and b[5] == l and b[8] == l) or (b[3] == l and b[6] == l and b[9] == l) or (b[1] == l and b[5] == l and b[9] == l) or (b[3] == l and b[5] == l and b[7] == l))
+        self.mode_var = tk.StringVar(value="1")  # 기본값은 유저 대 유저 대결
 
-def userMove():
-    run = True
+        tk.Radiobutton(mode_frame, text="Player vs Player", variable=self.mode_var, value="1").pack(anchor=tk.W)
+        tk.Radiobutton(mode_frame, text="Player vs Computer (Easy)", variable=self.mode_var, value="2").pack(anchor=tk.W)
+        tk.Radiobutton(mode_frame, text="Player vs Computer (Hard)", variable=self.mode_var, value="3").pack(anchor=tk.W)
 
-    while run:
-        pos = input("Enter a position between 1 to 9: ")
+        tk.Button(mode_frame, text="Reset Game", command=self.reset_game).pack()
 
-        try:
-            pos = int(pos)
-            if (pos > 0) and (pos < 10):
-                if spaceIsfree(pos):
-                    run = False
-                    insertLetter("X" , pos)
+    def button_click(self, idx):
+        if self.board[idx] == ' ':
+            self.board[idx] = self.player_mark if self.player_turn else self.computer_mark
+            self.buttons[idx].config(text=self.board[idx])
+            if self.check_winner(self.board[idx]):
+                if self.mode_var.get() == "1":
+                    winner = "Player1" if self.board[idx] == self.player_mark else "Player2"
                 else:
-                    print("Sorry this space is occupied")
-
+                    winner = "Player" if self.board[idx] == self.player_mark else "Computer"
+                messagebox.showinfo("Winner", f"{winner} wins!")
+                self.reset_board()
+                return
+            elif self.is_board_full():
+                messagebox.showinfo("Draw", "Game tie")
+                self.reset_board()
+                return
             else:
-                print("Please enter a number range between 1 to 9")
+                self.player_turn = not self.player_turn
 
-        except:
-            print("Please enter a number ")
+            if self.mode_var.get() in ["2", "3"] and not self.player_turn:
+                difficulty = "hard" if self.mode_var.get() == "3" else "easy"
+                self.computer_move(difficulty)
 
-def compMove():
-    possibleMoves = [x for x,letter in enumerate(board) if letter == " " and x != 0]
-    move = 0
+    def computer_move(self, difficulty):
+        move = compMove(self.board) if difficulty == "hard" else random.choice([idx for idx, letter in enumerate(self.board) if letter == " "])
+
+        if move != -1:
+            self.board[move] = self.computer_mark
+            self.buttons[move].config(text=self.computer_mark)
+            if self.check_winner(self.computer_mark):
+                messagebox.showinfo("Winner", "Computer wins!")
+            elif self.is_board_full():
+                messagebox.showinfo("Draw", "Game tie")
+            else:
+                self.player_turn = True
+        else:
+            messagebox.showinfo("Draw", "Game tie")
+
+    def check_winner(self, mark):
+        winning_combinations = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8],
+            [0, 3, 6], [1, 4, 7], [2, 5, 8],
+            [0, 4, 8], [2, 4, 6]
+        ]
+        for combo in winning_combinations:
+            if all(self.board[idx] == mark for idx in combo):
+                return True
+        return False
+
+    def is_board_full(self):
+        return ' ' not in self.board
+
+    def reset_board(self):
+        self.board = [' ' for _ in range(9)]
+        for button in self.buttons:
+            button.config(text='')
+        self.player_turn = True
+
+    def reset_game(self):
+        self.reset_board()
+
+def compMove(board):
+    possibleMoves = [x for x, letter in enumerate(board) if letter == " "]
+    move = -1
 
     for let in ['O','X']:
         for i in possibleMoves:
             boardCopy = board[:]
             boardCopy[i] = let
 
-            if isWinner(boardCopy,let):
+            if isWinner(boardCopy, let):
                 move = i
                 return move
 
-    cornorOpen = []
-    for i in possibleMoves:
-        if i in [1,3,7,9]:
-            cornorOpen.append(i)
+    cornerOpen = [i for i in possibleMoves if i in [0, 2, 6, 8]]
 
-    if len(cornorOpen) > 0:
-        move = selectRandom(cornorOpen)
+    if cornerOpen:
+        move = random.choice(cornerOpen)
         return move
 
-    if 5 in possibleMoves:
-        move = 5
+    if 4 in possibleMoves:
+        move = 4
         return move
 
-    edgeOpen = []
-    for i in possibleMoves:
-        if i in [2,4,6,8]:
-            edgeOpen.append(i)
+    edgeOpen = [i for i in possibleMoves if i in [1, 3, 5, 7]]
 
-
-    if len(edgeOpen) > 0:
-        move = selectRandom(edgeOpen)
+    if edgeOpen:
+        move = random.choice(edgeOpen)
         return move
 
-def selectRandom(list_):
-    import random
-    ln = len(list_)
-    r = random.randrange(0,ln)
+    return move
 
-    return list_[r]
-
+def isWinner(board, letter):
+    winning_combinations = [
+        [0, 1, 2], [3, 4, 5], [6, 7, 8],
+        [0, 3, 6], [1, 4, 7], [2, 5, 8],
+        [0, 4, 8], [2, 4, 6]
+    ]
+    for combo in winning_combinations:
+        if all(board[idx] == letter for idx in combo):
+            return True
+    return False
 
 def main():
-    print("Welcome to the tic tac toe game\n")
-    printBoard(board)
+    root = tk.Tk()
+    game = TicTacToeGUI(root)
+    root.mainloop()
 
-    while not(isBoardFull(board)):
-        if not(isWinner(board, "O")):
-            userMove()
-            printBoard(board)
-
-        else:
-            print("Sorry you loose! ")
-            break
-
-
-        if not(isWinner(board, "X")):
-            move = compMove()
-
-            if move == 0:
-                print("Tie game")
-
-            else:
-                insertLetter("O", move)
-                print(f"Computer place O on position {move}")
-                printBoard(board)
-
-        else:
-            print("You win! ")
-            break
-
-    if isBoardFull(board):
-        print("\nGame tie")
-
-
-while True:
-    choice = input("Do you want to play a game (Y/N): ")
-    if choice.lower() == 'y':
-        board = [" " for i in range(10)]
-        print("-----------------------------------------")
-        main()
-    else:
-        break
+if __name__ == "__main__":
+    main()
